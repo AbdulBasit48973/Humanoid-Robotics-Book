@@ -1,0 +1,595 @@
+openapi: 3.0.0
+info:
+  title: AI-Driven Book Content Management API
+  description: API for managing content, citations, and validation for the Physical AI & Humanoid Robotics book
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /chapters:
+    get:
+      summary: Get all chapters
+      description: Retrieve all chapters in the book with metadata
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+            enum: [intro, ros2, digital-twins, ai-robot-brain, perception, vla, capstone, evaluation]
+          description: Filter chapters by module
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, under_review, revised, reviewed, final]
+          description: Filter chapters by status
+      responses:
+        '200':
+          description: List of all chapters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chapters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chapter'
+                  total_count:
+                    type: integer
+                  word_count:
+                    type: integer
+        '500':
+          description: Internal server error
+
+  /chapters/{chapterId}:
+    get:
+      summary: Get chapter by ID
+      description: Retrieve a specific chapter with all its content
+      parameters:
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the chapter
+      responses:
+        '200':
+          description: Chapter content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chapter'
+        '404':
+          description: Chapter not found
+        '500':
+          description: Internal server error
+
+  /citations:
+    get:
+      summary: Get all citations
+      description: Retrieve all citations in the book with verification status
+      parameters:
+        - name: is_peer_reviewed
+          in: query
+          schema:
+            type: boolean
+          description: Filter citations by peer review status
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [journal, conference, book, website, documentation]
+          description: Filter citations by type
+      responses:
+        '200':
+          description: List of all citations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  citations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Citation'
+                  total_count:
+                    type: integer
+                  peer_reviewed_count:
+                    type: integer
+                  peer_reviewed_percentage:
+                    type: number
+        '500':
+          description: Internal server error
+
+  /validation/citations:
+    post:
+      summary: Validate citations
+      description: Verify all citations in the book against primary sources
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chapter_id:
+                  type: string
+                  description: Validate citations for a specific chapter only
+      responses:
+        '200':
+          description: Citation validation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_citations:
+                    type: integer
+                  valid_citations:
+                    type: integer
+                  invalid_citations:
+                    type: integer
+                  peer_reviewed_percentage:
+                    type: number
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        citation_id:
+                          type: string
+                        issue:
+                          type: string
+                        severity:
+                          type: string
+                          enum: [error, warning]
+        '500':
+          description: Internal server error
+
+  /validation/readability:
+    post:
+      summary: Check readability
+      description: Analyze content readability against Flesch-Kincaid grade 10-12 standard
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chapter_id:
+                  type: string
+                  description: Check readability for a specific chapter only
+                content:
+                  type: string
+                  description: Check readability for specific content
+      responses:
+        '200':
+          description: Readability analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  flesch_kincaid_grade:
+                    type: number
+                  flesch_reading_ease:
+                    type: number
+                  word_count:
+                    type: integer
+                  sentence_count:
+                    type: integer
+                  average_sentence_length:
+                    type: number
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+                  is_within_range:
+                    type: boolean
+        '500':
+          description: Internal server error
+
+  /validation/plagiarism:
+    post:
+      summary: Scan for plagiarism
+      description: Check content for plagiarism against known sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: Content to scan for plagiarism
+                chapter_id:
+                  type: string
+                  description: Chapter identifier if scanning specific chapter
+                section_id:
+                  type: string
+                  description: Section identifier if scanning specific section
+      responses:
+        '200':
+          description: Plagiarism scan results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plagiarism_percentage:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        source:
+                          type: string
+                        similarity:
+                          type: number
+                          minimum: 0
+                          maximum: 100
+                        content_snippet:
+                          type: string
+                  is_acceptable:
+                    type: boolean
+        '500':
+          description: Internal server error
+
+  /examples:
+    get:
+      summary: Get all examples
+      description: Retrieve all reproducible examples in the book
+      parameters:
+        - name: module_id
+          in: query
+          schema:
+            type: string
+          description: Filter examples by module
+        - name: difficulty_level:
+          in: query
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+          description: Filter examples by difficulty level
+      responses:
+        '200':
+          description: List of all examples
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  examples:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Example'
+                  total_count:
+                    type: integer
+        '500':
+          description: Internal server error
+
+  /deployment/status:
+    get:
+      summary: Get deployment status
+      description: Check the status of the book deployment to GitHub Pages
+      responses:
+        '200':
+          description: Deployment status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [building, deployed, failed, pending]
+                  last_deployed:
+                    type: string
+                    format: date-time
+                  url:
+                    type: string
+                    format: uri
+                  build_log:
+                    type: string
+                  error_message:
+                    type: string
+        '500':
+          description: Internal server error
+
+  /deployment/build:
+    post:
+      summary: Trigger deployment build
+      description: Build and deploy the book to GitHub Pages
+      responses:
+        '200':
+          description: Build triggered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [building, success, failed]
+                  build_id:
+                    type: string
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Chapter:
+      type: object
+      properties:
+        chapter_id:
+          type: string
+          description: Unique identifier for the chapter
+        title:
+          type: string
+          description: Title of the chapter
+        subtitle:
+          type: string
+          description: Subtitle if applicable
+        module_id:
+          type: string
+          description: Which module this chapter belongs to
+        word_count:
+          type: integer
+          description: Number of words in the chapter
+        status:
+          type: string
+          description: Current status of the chapter
+          enum: [outline, draft, under_review, revised, reviewed, final]
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        learning_objectives:
+          type: array
+          items:
+            type: string
+          description: What readers should learn
+        prerequisites:
+          type: array
+          items:
+            type: string
+          description: Knowledge required before reading
+        key_terms:
+          type: array
+          items:
+            type: string
+          description: Important terms defined in the chapter
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        last_updated:
+          type: string
+          format: date-time
+
+    Section:
+      type: object
+      properties:
+        section_id:
+          type: string
+          description: Unique identifier for the section
+        title:
+          type: string
+          description: Title of the section
+        content:
+          type: string
+          description: The content of the section
+        figures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Figure'
+        code_blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeBlock'
+        learning_outcomes:
+          type: array
+          items:
+            type: string
+          description: Specific outcomes from this section
+
+    Figure:
+      type: object
+      properties:
+        figure_id:
+          type: string
+          description: Unique identifier for the figure
+        title:
+          type: string
+          description: Title of the figure
+        description:
+          type: string
+          description: Detailed description
+        file_path:
+          type: string
+          description: Path to the figure file
+        caption:
+          type: string
+          description: Caption for the figure
+        alt_text:
+          type: string
+          description: Alternative text for accessibility
+
+    CodeBlock:
+      type: object
+      properties:
+        block_id:
+          type: string
+          description: Unique identifier for the code block
+        language:
+          type: string
+          description: Programming language
+        code:
+          type: string
+          description: The actual code
+        description:
+          type: string
+          description: What the code does
+        explanation:
+          type: string
+          description: Detailed explanation of the code
+        file_path:
+          type: string
+          description: Where this code should be located
+
+    Citation:
+      type: object
+      properties:
+        citation_id:
+          type: string
+          description: Unique identifier for the citation
+        type:
+          type: string
+          description: Type of source
+          enum: [journal, conference, book, website, documentation]
+        authors:
+          type: array
+          items:
+            type: string
+          description: List of authors
+        title:
+          type: string
+          description: Title of the work
+        journal:
+          type: string
+          description: Journal name (for journal articles)
+        publisher:
+          type: string
+          description: Publisher name
+        year:
+          type: integer
+          description: Publication year
+        volume:
+          type: string
+          description: Volume number (for journal articles)
+        issue:
+          type: string
+          description: Issue number (for journal articles)
+        pages:
+          type: string
+          description: Page range (for journal articles)
+        doi:
+          type: string
+          description: Digital Object Identifier
+        url:
+          type: string
+          format: uri
+          description: URL if available
+        access_date:
+          type: string
+          format: date-time
+          description: Date when online source was accessed
+        is_peer_reviewed:
+          type: boolean
+          description: Whether this is a peer-reviewed source
+        content_claimed:
+          type: string
+          description: What technical claim this citation supports
+        verified:
+          type: boolean
+          description: Whether the citation has been verified
+
+    Example:
+      type: object
+      properties:
+        example_id:
+          type: string
+          description: Unique identifier for the example
+        title:
+          type: string
+          description: Title of the example
+        description:
+          type: string
+          description: Detailed description of the example
+        module_id:
+          type: string
+          description: Which module this example belongs to
+        chapter_id:
+          type: string
+          description: Which chapter this example appears in
+        code_snippets:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeSnippet'
+        configuration_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigurationFile'
+        expected_outcomes:
+          type: array
+          items:
+            type: string
+          description: What the example should demonstrate
+        prerequisites:
+          type: array
+          items:
+            type: string
+          description: What is needed to run this example
+        difficulty_level:
+          type: string
+          description: Difficulty level
+          enum: [beginner, intermediate, advanced]
+        estimated_time:
+          type: integer
+          description: Estimated time to understand/execute in minutes
+
+    CodeSnippet:
+      type: object
+      properties:
+        snippet_id:
+          type: string
+          description: Unique identifier for the snippet
+        language:
+          type: string
+          description: Programming language
+        code:
+          type: string
+          description: The code snippet
+        description:
+          type: string
+          description: What the snippet demonstrates
+        explanation:
+          type: string
+          description: Explanation of the code
+        file_path:
+          type: string
+          description: File path where this code belongs
+
+    ConfigurationFile:
+      type: object
+      properties:
+        file_id:
+          type: string
+          description: Unique identifier for the file
+        name:
+          type: string
+          description: Name of the configuration file
+        path:
+          type: string
+          description: Path to the file
+        content:
+          type: string
+          description: Content of the configuration file
+        description:
+          type: string
+          description: What this configuration does
+        usage_context:
+          type: string
+          description: Where and how to use this file

@@ -1,0 +1,3 @@
+Robotics is an interdisciplinary branch of engineering and science that includes mechanical engineering, electrical engineering, computer science, and others. Robotics deals with the design, construction, operation, and use of robots, as well as computer systems for their control, sensory feedback, and information processing.
+
+These technologies are used in manufacturing, assembly, and packaging, transport, earth and space exploration, medicine, military, and as assistive devices for individuals with physical disabilities.

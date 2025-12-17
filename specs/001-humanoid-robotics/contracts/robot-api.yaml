@@ -1,0 +1,685 @@
+openapi: 3.0.0
+info:
+  title: Humanoid Robot API
+  description: API for controlling and monitoring the humanoid robot system
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /voice/command:
+    post:
+      summary: Process a natural language voice command
+      description: Accepts a natural language command and converts it to an executable action sequence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - command
+                - user_id
+              properties:
+                command:
+                  type: string
+                  description: Natural language command (e.g., "Go to the table and pick up the red cube")
+                  example: "Move to the kitchen and bring me a cup"
+                user_id:
+                  type: string
+                  description: ID of the user issuing the command
+                  example: "user_123"
+                confidence_threshold:
+                  type: number
+                  description: Minimum confidence required for command execution (default 0.7)
+                  minimum: 0.0
+                  maximum: 1.0
+                  default: 0.7
+      responses:
+        '200':
+          description: Command successfully processed and action sequence created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  command_id:
+                    type: string
+                    description: Unique ID of the created command sequence
+                  status:
+                    type: string
+                    description: Status of the command processing
+                    enum: [accepted, processing, queued]
+                  confidence:
+                    type: number
+                    description: Confidence level of command interpretation
+                    minimum: 0.0
+                    maximum: 1.0
+                  action_sequence:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Action'
+        '400':
+          description: Invalid command or low confidence
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+
+  /robot/state:
+    get:
+      summary: Get current robot state
+      description: Retrieve the current state of the humanoid robot
+      responses:
+        '200':
+          description: Current robot state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RobotState'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+
+  /robot/command/{command_id}:
+    get:
+      summary: Get command status
+      description: Retrieve the status of a specific command sequence
+      parameters:
+        - name: command_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique ID of the command sequence
+      responses:
+        '200':
+          description: Command status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandSequence'
+        '404':
+          description: Command not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+    delete:
+      summary: Cancel command
+      description: Cancel a running command sequence
+      parameters:
+        - name: command_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique ID of the command sequence
+      responses:
+        '200':
+          description: Command successfully canceled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: Cancellation status
+        '404':
+          description: Command not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+
+  /environment/map:
+    get:
+      summary: Get environment map
+      description: Retrieve the current environment model with objects and obstacles
+      parameters:
+        - name: resolution
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high]
+            default: medium
+          description: Resolution of the environment map
+      responses:
+        '200':
+          description: Current environment model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentModel'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                  code:
+                    type: string
+                    description: Error code
+
+  /perception/detect:
+    post:
+      summary: Object detection
+      description: Perform object detection in the current environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_objects:
+                  type: array
+                  items:
+                    type: string
+                  description: List of specific objects to detect (optional, detects all if not specified)
+                  example: ["cup", "table", "chair"]
+                camera_view:
+                  type: string
+                  description: Which camera view to use (front, left, right, etc.)
+                  default: "front"
+      responses:
+        '200':
+          description: Object detection results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detections:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObjectDetection'
+                  timestamp:
+                    type: string
+                    format: date-time
+                  confidence_threshold:
+                    type: number
+                    minimum: 0.0
+                    maximum: 1.0
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    RobotState:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the state was recorded
+        position:
+          $ref: '#/components/schemas/Vector3'
+        orientation:
+          $ref: '#/components/schemas/Quaternion'
+        joint_angles:
+          type: array
+          items:
+            type: number
+          description: Current angles for each robot joint
+        joint_velocities:
+          type: array
+          items:
+            type: number
+          description: Current velocities for each joint
+        joint_efforts:
+          type: array
+          items:
+            type: number
+          description: Current efforts/torques for each joint
+        sensor_readings:
+          $ref: '#/components/schemas/SensorData'
+        battery_level:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Current battery level
+        operational_status:
+          type: string
+          description: Current operational status
+          enum: [idle, executing, error, charging, maintenance]
+
+    CommandSequence:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the command sequence
+        original_command:
+          type: string
+          description: Original natural language command
+        parsed_command:
+          $ref: '#/components/schemas/ParsedCommand'
+        action_list:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        status:
+          type: string
+          description: Current status
+          enum: [pending, executing, completed, failed, canceled]
+        created_at:
+          type: string
+          format: date-time
+        estimated_duration:
+          type: number
+          description: Estimated time to complete the sequence in seconds
+        confidence_level:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence in command interpretation
+        dependencies:
+          type: array
+          items:
+            type: string
+          description: Other sequences this one depends on
+
+    SensorData:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        lidar_data:
+          $ref: '#/components/schemas/LIDARReading'
+        imu_data:
+          $ref: '#/components/schemas/IMUReading'
+        camera_data:
+          $ref: '#/components/schemas/CameraReading'
+        force_torque_data:
+          $ref: '#/components/schemas/ForceTorqueReading'
+        sensor_fusion_result:
+          $ref: '#/components/schemas/SensorFusionResult'
+
+    EnvironmentModel:
+      type: object
+      properties:
+        map_id:
+          type: string
+          description: Unique identifier for the environment map
+        map_data:
+          type: object
+          description: Occupancy grid representation of the environment
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedObject'
+        obstacles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Obstacle'
+        navigation_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavigationPoint'
+        semantic_annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticAnnotation'
+        last_updated:
+          type: string
+          format: date-time
+        confidence_map:
+          type: array
+          items:
+            type: number
+          description: Confidence values for each map cell
+
+    Action:
+      type: object
+      properties:
+        action_id:
+          type: string
+          description: Unique identifier for the action
+        action_type:
+          type: string
+          description: Type of action
+          enum: [navigate, detect, manipulate, wait, report]
+        parameters:
+          type: object
+          description: Action-specific parameters
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Execution priority
+        preconditions:
+          type: array
+          items:
+            type: string
+          description: Conditions that must be true before execution
+        postconditions:
+          type: array
+          items:
+            type: string
+          description: Expected conditions after execution
+
+    ParsedCommand:
+      type: object
+      properties:
+        action_type:
+          type: string
+          description: Type of action (navigation, manipulation, detection, etc.)
+        target_object:
+          type: string
+          description: Name/type of target object (if applicable)
+        target_location:
+          $ref: '#/components/schemas/Vector3'
+        parameters:
+          type: object
+          description: Additional action-specific parameters
+
+    Vector3:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+
+    Quaternion:
+      type: object
+      properties:
+        w:
+          type: number
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+
+    LIDARReading:
+      type: object
+      properties:
+        ranges:
+          type: array
+          items:
+            type: number
+          description: Distance measurements
+        intensities:
+          type: array
+          items:
+            type: number
+          description: Intensity values
+        angle_min:
+          type: number
+          description: Minimum angle of the scan
+        angle_max:
+          type: number
+          description: Maximum angle of the scan
+        angle_increment:
+          type: number
+          description: Angular resolution
+        time_increment:
+          type: number
+          description: Time between measurements
+        scan_time:
+          type: number
+          description: Time between scans
+        range_min:
+          type: number
+          description: Minimum range value
+        range_max:
+          type: number
+          description: Maximum range value
+
+    IMUReading:
+      type: object
+      properties:
+        orientation:
+          $ref: '#/components/schemas/Quaternion'
+        angular_velocity:
+          $ref: '#/components/schemas/Vector3'
+        linear_acceleration:
+          $ref: '#/components/schemas/Vector3'
+        orientation_covariance:
+          type: array
+          items:
+            type: number
+          description: Covariance matrix for orientation (9 elements)
+        angular_velocity_covariance:
+          type: array
+          items:
+            type: number
+          description: Covariance matrix for angular velocity (9 elements)
+        linear_acceleration_covariance:
+          type: array
+          items:
+            type: number
+          description: Covariance matrix for linear acceleration (9 elements)
+
+    CameraReading:
+      type: object
+      properties:
+        image_data:
+          type: string
+          format: byte
+          description: Base64 encoded image data
+        depth_data:
+          type: string
+          format: byte
+          description: Base64 encoded depth image data
+        camera_info:
+          $ref: '#/components/schemas/CameraInfo'
+        object_detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectDetection'
+
+    CameraInfo:
+      type: object
+      properties:
+        width:
+          type: integer
+          description: Image width in pixels
+        height:
+          type: integer
+          description: Image height in pixels
+        intrinsic_matrix:
+          type: array
+          items:
+            type: number
+          description: 3x3 intrinsic camera matrix (9 elements)
+        distortion_coeffs:
+          type: array
+          items:
+            type: number
+          description: Distortion coefficients
+
+    ObjectDetection:
+      type: object
+      properties:
+        object_id:
+          type: string
+          description: Unique identifier for the detected object
+        class_name:
+          type: string
+          description: Object class (e.g., "cup", "table", "human")
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Detection confidence
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        pose:
+          $ref: '#/components/schemas/Pose'
+        dimensions:
+          $ref: '#/components/schemas/Vector3'
+
+    BoundingBox:
+      type: object
+      properties:
+        x_min:
+          type: integer
+        y_min:
+          type: integer
+        x_max:
+          type: integer
+        y_max:
+          type: integer
+
+    Pose:
+      type: object
+      properties:
+        position:
+          $ref: '#/components/schemas/Vector3'
+        orientation:
+          $ref: '#/components/schemas/Quaternion'
+
+    ForceTorqueReading:
+      type: object
+      properties:
+        force:
+          $ref: '#/components/schemas/Vector3'
+        torque:
+          $ref: '#/components/schemas/Vector3'
+        sensor_name:
+          type: string
+          description: Name of the force/torque sensor
+
+    SensorFusionResult:
+      type: object
+      properties:
+        fused_pose:
+          $ref: '#/components/schemas/Pose'
+        fused_velocity:
+          $ref: '#/components/schemas/Vector3'
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence in the fused result
+        timestamp:
+          type: string
+          format: date-time
+
+    DetectedObject:
+      type: object
+      properties:
+        object_id:
+          type: string
+          description: Unique identifier for the object
+        class_name:
+          type: string
+          description: Object class
+        pose:
+          $ref: '#/components/schemas/Pose'
+        dimensions:
+          $ref: '#/components/schemas/Vector3'
+        confidence:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Detection confidence
+
+    Obstacle:
+      type: object
+      properties:
+        obstacle_id:
+          type: string
+          description: Unique identifier for the obstacle
+        shape:
+          type: string
+          enum: [point, box, cylinder, polygon]
+          description: Geometric shape of the obstacle
+        pose:
+          $ref: '#/components/schemas/Pose'
+        dimensions:
+          $ref: '#/components/schemas/Vector3'
+        is_static:
+          type: boolean
+          description: Whether the obstacle is static or dynamic
+
+    NavigationPoint:
+      type: object
+      properties:
+        point_id:
+          type: string
+          description: Unique identifier for the navigation point
+        pose:
+          $ref: '#/components/schemas/Pose'
+        is_waypoint:
+          type: boolean
+          description: Whether this is a significant waypoint
+        accessibility:
+          type: string
+          enum: [accessible, restricted, blocked]
+          description: Accessibility level
+
+    SemanticAnnotation:
+      type: object
+      properties:
+        annotation_id:
+          type: string
+          description: Unique identifier for the annotation
+        area_type:
+          type: string
+          description: Type of area (kitchen, living_room, office, etc.)
+        properties:
+          type: object
+          description: Additional properties of the area
+        boundary:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vector3'
+          description: Boundary points of the annotated area
