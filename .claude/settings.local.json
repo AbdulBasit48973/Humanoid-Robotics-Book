@@ -38,7 +38,13 @@
       "Bash(powershell -Command \"Get-ChildItem ''C:\\test\\humanoid-robotics-book\\build\\docs\\module1'' -Recurse | Select-Object -First 5\")",
       "Bash(powershell -Command \"Get-Content ''C:\\test\\humanoid-robotics-book\\build\\docs\\module1\\intro\\index.html'' | Measure-Object -Line\")",
       "Bash(powershell -Command \"Get-Content ''C:\\test\\humanoid-robotics-book\\build\\docs\\module1\\intro\\index.html'' -First 20\")",
-      "Bash(powershell -Command \"(Get-Content ''C:\\test\\humanoid-robotics-book\\build\\docs\\module1\\intro\\index.html'' -Raw).Length\")"
+      "Bash(powershell -Command \"(Get-Content ''C:\\test\\humanoid-robotics-book\\build\\docs\\module1\\intro\\index.html'' -Raw).Length\")",
+      "Bash(dir /s)",
+      "Bash(dir)",
+      "Bash(dir specs /s)",
+      "Bash(dir specs /s /b)",
+      "Bash(dir specs /AD)",
+      "Bash(find:*)"
     ]
   }
 }

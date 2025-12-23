@@ -20,6 +20,12 @@ function HomepageHeader() {
             to="/docs/intro">
             Read the Book
           </Link>
+          <Link
+            className="button button--primary button--lg"
+            to="/docs/chat-assistant"
+            style={{marginLeft: '1rem'}}>
+            Try the AI Assistant
+          </Link>
         </div>
       </div>
     </header>

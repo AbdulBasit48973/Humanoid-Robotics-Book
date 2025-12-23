@@ -1,0 +1,36 @@
+---
+sidebar_position: 1
+---
+
+# Humanoid Robotics Book Assistant
+
+Welcome to the interactive AI assistant for the Physical AI & Humanoid Robotics book. This assistant can answer your questions about the content in this book using advanced retrieval-augmented generation (RAG) technology.
+
+## How to Use
+
+1. Type your question in the chat box at the bottom of the page
+2. Press Enter or click "Send" to get an answer
+3. The assistant will provide a response based on the book content
+4. Sources will be provided for transparency
+
+## Advanced Features
+
+### Using Selected Text
+1. Highlight text on the current page
+2. Click "Use Selected Text" button
+3. Toggle "Selection Mode" on
+4. Ask questions specifically about the selected text
+
+This allows you to get clarifications on specific passages without affecting the broader knowledge base.
+
+## Technology Behind
+
+This assistant uses:
+- **Content Extraction**: Automatically extracts content from all book pages
+- **Cohere Embeddings**: Converts text to high-quality semantic vectors
+- **Qdrant Vector Database**: Stores and retrieves relevant content efficiently
+- **OpenAI GPT**: Generates natural language responses grounded in book content
+
+import ChatComponent from '@site/src/components/ChatInterface';
+
+<ChatComponent />
